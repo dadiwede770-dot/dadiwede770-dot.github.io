@@ -22,19 +22,21 @@ photoInput.addEventListener("change", async () => {
     if (!file) return;
 
     const fileExtension = file.name.split(".").pop();
-    const fileName = `${Date.now()}.${fileExtension}`;
+    const fileName = `${Date.now()}-${file.name}`;
 
     const { error } = await supabaseClient.storage
         .from("Photo's")
         .upload(fileName, file);
 
     if (error) {
-        console.error(error);
+        console.error("Upload error:", error);
         alert("Upload failed: " + error.message);
         return;
     }
 
     alert("Photo uploaded successfully! 📸");
+
+    photoInput.value = "";
 
     loadPhotos();
 });
@@ -46,19 +48,32 @@ photoInput.addEventListener("change", async () => {
 
 async function loadPhotos() {
 
-    gallery.innerHTML = "";
+    gallery.innerHTML = "<p>Loading photos... 📸</p>";
 
-    const { data, error } = await supabaseClient.storage
+    const { data: files, error } = await supabaseClient.storage
         .from("Photo's")
-        .list();
+        .list("", {
+            limit: 100,
+            sortBy: {
+                column: "created_at",
+                order: "desc"
+            }
+        });
 
     if (error) {
-        console.error(error);
-        gallery.innerHTML = "<p>Unable to load photos.</p>";
+        console.error("List error:", error);
+        gallery.innerHTML = `
+            <p>Unable to load photos.</p>
+        `;
         return;
     }
 
-    if (!data || data.length === 0) {
+    const imageFiles = files.filter(file => {
+        return file.name &&
+            /\.(jpg|jpeg|png|webp|gif|heic)$/i.test(file.name);
+    });
+
+    if (imageFiles.length === 0) {
         gallery.innerHTML = `
             <div class="photo">
                 No photos yet
@@ -67,9 +82,11 @@ async function loadPhotos() {
         return;
     }
 
-    data.forEach((file) => {
+    gallery.innerHTML = "";
 
-        const { data: publicUrlData } = supabaseClient.storage
+    imageFiles.forEach(file => {
+
+        const { data } = supabaseClient.storage
             .from("Photo's")
             .getPublicUrl(file.name);
 
@@ -78,13 +95,18 @@ async function loadPhotos() {
 
         const image = document.createElement("img");
 
-        image.src = publicUrlData.publicUrl;
-        image.alt = "Gallery photo";
+        image.src = data.publicUrl;
+        image.alt = file.name;
+        image.loading = "lazy";
 
         image.style.width = "100%";
         image.style.height = "220px";
         image.style.objectFit = "cover";
         image.style.display = "block";
+
+        image.onerror = () => {
+            console.error("Could not display:", file.name);
+        };
 
         photo.appendChild(image);
         gallery.appendChild(photo);
