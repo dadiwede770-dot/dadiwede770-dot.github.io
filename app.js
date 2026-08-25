@@ -73,47 +73,44 @@ viewer.addEventListener("click", (event) => {
 // UPLOAD PHOTO
 // ===============================
 
-uploadButton.addEventListener("click", () => {
-    photoInput.click();
-});
-
 photoInput.addEventListener("change", async () => {
-
     const file = photoInput.files[0];
 
     if (!file) return;
 
-    let mimeType = file.type;
+    const extension = file.name
+        .split(".")
+        .pop()
+        .toLowerCase();
 
-    if (!mimeType || mimeType === "application/octet-stream") {
+    const mimeTypes = {
+        jpg: "image/jpeg",
+        jpeg: "image/jpeg",
+        png: "image/png",
+        webp: "image/webp",
+        gif: "image/gif",
+        heic: "image/heic"
+    };
 
-        const extension = file.name
-            .split(".")
-            .pop()
-            .toLowerCase();
+    const mimeType = mimeTypes[extension];
 
-        const mimeTypes = {
-            jpg: "image/jpeg",
-            jpeg: "image/jpeg",
-            png: "image/png",
-            webp: "image/webp",
-            gif: "image/gif",
-            heic: "image/heic"
-        };
-
-        mimeType = mimeTypes[extension];
-    }
-
-    if (!mimeType || !mimeType.startsWith("image/")) {
+    if (!mimeType) {
         alert("Please choose a supported image file.");
         return;
     }
+
+    // Create a new file with the correct MIME type
+    const correctedFile = new File(
+        [file],
+        file.name,
+        { type: mimeType }
+    );
 
     const fileName = `${Date.now()}-${file.name}`;
 
     const { error } = await supabaseClient.storage
         .from("Photo's")
-        .upload(fileName, file, {
+        .upload(fileName, correctedFile, {
             contentType: mimeType,
             upsert: false
         });
