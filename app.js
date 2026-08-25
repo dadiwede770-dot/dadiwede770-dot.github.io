@@ -18,7 +18,7 @@ photoInput.addEventListener("change", async () => {
     const fileName = `${Date.now()}-${file.name}`;
 
     const { error } = await supabaseClient.storage
-        .from("photos")
+        .from("Photo's")
         .upload(fileName, file);
 
     if (error) {
